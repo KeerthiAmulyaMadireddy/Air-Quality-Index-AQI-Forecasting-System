@@ -278,17 +278,13 @@ Actual_High_AQI                 3,763         12,739
 ## Project Structure
 
 ```
-14 Days Databricks Challenge/
-|
-+-- files/
+Air-Quality-Index-AQI-Forecasting-System/
+
 |   +-- AQI Data_cleaning.ipynb.ipynb    # Data cleaning & feature engineering
 |   +-- AQI_ML_Models_Final_2 (1).ipynb  # ML model training with MLflow
 |   +-- README.md                         # This file
 |   +-- AQI_Presentation.pptx            # PowerPoint presentation
 |
-+-- AQI_Complete_Project_Fixed.ipynb      # Complete project notebook
-+-- AQI_ML_Models_Complete.ipynb          # Additional ML experiments
-+-- capstone_project.ipynb                # Capstone submission
 ```
 
 ---
