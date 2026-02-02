@@ -22,7 +22,6 @@ else:
     print("⚠ GROQ_API_KEY not set – AI chatbot will be disabled.")
 
 
-
 # Sample predictions (same as FastAPI)
 SAMPLE_PREDICTIONS: Dict[str, Dict[str, int]] = {
     "Delhi":     {"current_aqi": 245, "predicted_1d": 280, "predicted_3d": 265, "predicted_7d": 240},
@@ -35,11 +34,7 @@ SAMPLE_PREDICTIONS: Dict[str, Dict[str, int]] = {
 # In-memory demo store for alert subscriptions
 ALERT_SUBSCRIPTIONS: List[Dict[str, str]] = []
 
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
+# Helper Functions
 def get_aqi_color(aqi: int) -> str:
     if aqi <= 50:
         return "#00E400"  # Green
@@ -157,7 +152,6 @@ Instructions:
 
 # ============================================================================
 # MAIN APP
-# ============================================================================
 
 def main():
     st.title("🌍 AQI Forecasting Assistant")
@@ -220,27 +214,6 @@ def main():
                 - Understand pollution patterns
                 """
             )
-
-        st.markdown("---")
-
-        st.subheader("🚀 Quick Check")
-        col1, col2, col3 = st.columns([2, 1, 1])
-
-        with col1:
-            quick_city = st.selectbox("Select City", fetch_cities_local(), key="quick_city")
-        with col2:
-            quick_days = st.selectbox("Forecast", [1, 3, 7], key="quick_days")
-        with col3:
-            st.write("")
-            if st.button("Check AQI", key="quick_check"):
-                result = get_prediction_local(quick_city, quick_days)
-                if result:
-                    st.success(
-                        f"**{quick_city}** – Predicted AQI: "
-                        f"**{result['predicted_aqi']}** ({result['category']})"
-                    )
-                else:
-                    st.error("❌ Could not compute prediction.")
 
     # ----------------------- PREDICTIONS ----------------------
     elif page == "📊 Predictions":
