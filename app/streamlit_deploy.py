@@ -1,20 +1,10 @@
-"""
-AQI Forecasting Assistant - Single-file Streamlit App
-Uses local sample predictions + Groq for AI chatbot.
-"""
-
 import os
 from datetime import datetime
 from typing import Dict, Any, List
 
 import streamlit as st
 import plotly.graph_objects as go
-from dotenv import load_dotenv
 from groq import Groq
-
-# ============================================================================
-# CONFIG
-# ============================================================================
 
 st.set_page_config(
     page_title="AQI Forecasting Assistant",
@@ -22,13 +12,15 @@ st.set_page_config(
     layout="wide",
 )
 
-load_dotenv()
+# On Streamlit Cloud, GROQ_API_KEY comes from Secrets
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# Initialize Groq client (optional: handle missing key gracefully)
 groq_client = None
+
 if GROQ_API_KEY:
     groq_client = Groq(api_key=GROQ_API_KEY)
+else:
+    print("⚠ GROQ_API_KEY not set – AI chatbot will be disabled.")
+
 
 # Sample predictions (same as FastAPI)
 SAMPLE_PREDICTIONS: Dict[str, Dict[str, int]] = {
@@ -173,6 +165,7 @@ def main():
 
     with st.sidebar:
         st.header("📋 Navigation")
+        st.caption(f"GROQ key detected: {bool(GROQ_API_KEY)}")
         page = st.radio(
             "Choose a section:",
             ["🏠 Home", "📊 Predictions", "💬 AI Chatbot", "🚨 Alerts"],
