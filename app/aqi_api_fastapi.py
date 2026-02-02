@@ -1,30 +1,34 @@
-# aqi_api_fastapi.py
-# AQI Prediction API with AI Chatbot (FastAPI version)
+
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import mlflow.sklearn
-import google.generativeai as genai
 from datetime import datetime
 from dotenv import load_dotenv
+from groq import Groq
 import os
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-
 load_dotenv()
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is not set in .env")
-genai.configure(api_key=GEMINI_API_KEY)
 
 MODEL_RUN_ID = os.getenv("MODEL_RUN_ID", "YOUR_MLFLOW_RUN_ID")
 model = None
 
+# Backend switches
+USE_HUGGINGFACE = False   
+USE_OLLAMA = False        
+USE_GROQ = True          
+
+# Initialize Groq client
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if USE_GROQ:
+    if not GROQ_API_KEY:
+        raise RuntimeError("GROQ_API_KEY is not set in .env")
+    groq_client = Groq(api_key=GROQ_API_KEY)
+    print("✓ Groq client initialized")
+
+# Sample data
 SAMPLE_PREDICTIONS: Dict[str, Dict[str, int]] = {
     "Delhi": {"current_aqi": 245, "predicted_1d": 280, "predicted_3d": 265, "predicted_7d": 240},
     "Mumbai": {"current_aqi": 95, "predicted_1d": 105, "predicted_3d": 110, "predicted_7d": 100},
@@ -38,14 +42,14 @@ SAMPLE_PREDICTIONS: Dict[str, Dict[str, int]] = {
 # ============================================================================
 
 app = FastAPI(
-    title="AQI Forecasting API",
+    title="AQI Forecasting API (Open Source)",
     version="1.0",
-    description="AQI prediction and AI chatbot using sample data + Gemini.",
+    description="AQI prediction and AI chatbot using Groq Llama models.",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],    # tighten in prod
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +61,7 @@ app.add_middleware(
 
 class PredictRequest(BaseModel):
     city: str = "Delhi"
-    days: int = 1  # 1, 3, or 7
+    days: int = 1
 
 class PredictResponse(BaseModel):
     city: str
@@ -75,6 +79,7 @@ class ChatResponse(BaseModel):
     question: str
     response: str
     timestamp: str
+    model_used: str
 
 class AlertsEntry(BaseModel):
     city: str
@@ -101,28 +106,65 @@ def load_model() -> None:
 def get_city_context(city: str) -> Optional[Dict[str, Any]]:
     return SAMPLE_PREDICTIONS.get(city)
 
-def generate_ai_response(user_question: str, context: Dict[str, Any]) -> str:
-    prompt = f"""You are an AQI (Air Quality Index) forecasting assistant with access to real-time predictions.
+def generate_ai_response_groq(user_question: str, context: Dict[str, Any]) -> str:
+    try:
+        prompt = f"""You are an AQI (Air Quality Index) assistant.
 
-User Question: {user_question}
+Context data (do not repeat everything unless needed): {context}
 
-Available Data: {context}
+User question: {user_question}
 
 Instructions:
-- Be helpful, clear, and concise (max 100 words)
-- Use specific AQI numbers from the data
-- Give actionable health advice
-- Explain in simple terms
-- If data is unavailable, say so politely
+- Answer in 2–3 short sentences (max ~60 words).
+- Use only the most relevant city examples.
+- Do NOT repeat the full context.
+- Give one clear health recommendation if appropriate.
+"""
 
-Answer:"""
-
-    try:
-        gmodel = genai.GenerativeModel("gemini-pro")
-        response = gmodel.generate_content(prompt)
-        return response.text
+        completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,          # slightly lower = less rambling
+            max_tokens=120,           # hard cap on length
+        )
+        return completion.choices[0].message.content.strip()
     except Exception as e:
-        return f"Sorry, I'm having trouble generating a response. Error: {str(e)}"
+        return f"Error with Groq: {str(e)}"
+
+def generate_ai_response_rulebased(user_question: str, context: Dict[str, Any]) -> str:
+    q = user_question.lower()
+    mentioned_city = None
+    for city in context.keys():
+        if city.lower() in q:
+            mentioned_city = city
+            break
+
+    if mentioned_city:
+        data = context[mentioned_city]
+        return (
+            f"{mentioned_city} currently has an AQI of {data['current_aqi']}. "
+            f"Tomorrow's forecast is {data['predicted_1d']}. "
+            f"{'Health advisory: Limit outdoor activities.' if data['predicted_1d'] > 150 else 'Air quality is acceptable.'}"
+        )
+
+    if "highest" in q or "worst" in q:
+        worst_city = max(context.items(), key=lambda x: x[1]["predicted_1d"])
+        return f"{worst_city[0]} has the highest predicted AQI at {worst_city[1]['predicted_1d']}."
+
+    if "lowest" in q or "best" in q:
+        best_city = min(context.items(), key=lambda x: x[1]["predicted_1d"])
+        return f"{best_city[0]} has the best air quality with AQI {best_city[1]['predicted_1d']}."
+
+    return (
+        "I can provide AQI data for Delhi, Mumbai, Bangalore, Kolkata, and Chennai. "
+        "Try asking about a specific city or use the /predict endpoint."
+    )
+
+def generate_ai_response(user_question: str, context: Dict[str, Any]) -> tuple[str, str]:
+    if USE_GROQ:
+        return generate_ai_response_groq(user_question, context), "Groq (llama-3.1-8b-instant)"
+    else:
+        return generate_ai_response_rulebased(user_question, context), "Rule-based"
 
 # ============================================================================
 # ROUTES
@@ -130,15 +172,27 @@ Answer:"""
 
 @app.get("/")
 def home():
+    model_info = "Groq" if USE_GROQ else "Rule-based"
     return {
-        "service": "AQI Forecasting API",
+        "service": "AQI Forecasting API (Open Source)",
         "version": "1.0",
+        "ai_model": model_info,
         "endpoints": {
             "/predict": "POST - Get AQI predictions for a city",
             "/chat": "POST - Ask questions about air quality",
             "/cities": "GET  - Get list of available cities",
             "/alerts": "GET  - High pollution alerts",
+            "/health": "GET  - API health check",
         },
+    }
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "ai_backend": "Groq" if USE_GROQ else "Rule-based",
+        "timestamp": datetime.now().isoformat(),
     }
 
 @app.get("/cities")
@@ -207,12 +261,13 @@ def chat(body: ChatRequest):
         raise HTTPException(status_code=400, detail="Message is required")
 
     context = SAMPLE_PREDICTIONS
-    ai_response = generate_ai_response(body.message, context)
+    ai_response, model_used = generate_ai_response(body.message, context)
 
     return ChatResponse(
         question=body.message,
         response=ai_response,
         timestamp=datetime.now().isoformat(),
+        model_used=model_used,
     )
 
 @app.get("/alerts", response_model=AlertsResponse)
@@ -236,3 +291,41 @@ def get_alerts():
         timestamp=datetime.now().isoformat(),
     )
 
+# ============================================================================
+# STARTUP EVENT
+# ============================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    load_model()
+    print("=" * 60)
+    print("🚀 AQI Forecasting API Started")
+    print("=" * 60)
+    if USE_GROQ:
+        print("✓ Using Groq API (llama-3.1-8b-instant)")
+    else:
+        print("⚠ Using rule-based responses")
+    print("=" * 60)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000)
+
+
+from pydantic import BaseModel
+
+class AlertSubscription(BaseModel):
+    city: str
+    contact: str  # email or phone
+
+ALERT_SUBSCRIPTIONS: list[AlertSubscription] = []  
+
+
+@app.post("/subscribe_alerts")
+def subscribe_alerts(body: AlertSubscription):
+    # naive in-memory store; in real app use DB
+    ALERT_SUBSCRIPTIONS.append(body)
+    return {
+        "message": f"Alert preference saved for {body.city}. "
+                   "This is a demo; no real messages are sent yet."
+    }
