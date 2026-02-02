@@ -275,20 +275,6 @@ Actual_High_AQI                 3,763         12,739
 
 ---
 
-## Project Structure
-
-```
-Air-Quality-Index-AQI-Forecasting-System/
-
-|   +-- AQI Data_cleaning.ipynb.ipynb    # Data cleaning & feature engineering
-|   +-- AQI_ML_Models_Final_2 (1).ipynb  # ML model training with MLflow
-|   +-- README.md                         # This file
-|   +-- AQI_Presentation.pptx            # PowerPoint presentation
-|
-```
-
----
-
 ## Technologies Used
 
 | Category | Technologies |
