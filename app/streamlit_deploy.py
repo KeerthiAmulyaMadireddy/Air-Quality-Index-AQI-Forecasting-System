@@ -6,13 +6,13 @@ import streamlit as st
 import plotly.graph_objects as go
 from groq import Groq
 
+
 st.set_page_config(
     page_title="AQI Forecasting Assistant",
     page_icon="🌍",
     layout="wide",
 )
 
-# On Streamlit Cloud, GROQ_API_KEY comes from Secrets
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 groq_client = None
 
@@ -20,6 +20,7 @@ if GROQ_API_KEY:
     groq_client = Groq(api_key=GROQ_API_KEY)
 else:
     print("⚠ GROQ_API_KEY not set – AI chatbot will be disabled.")
+
 
 
 # Sample predictions (same as FastAPI)
@@ -164,6 +165,7 @@ def main():
     st.markdown("---")
 
     with st.sidebar:
+        st.caption(f"GROQ key detected: {bool(GROQ_API_KEY)}")
         st.header("📋 Navigation")
         st.caption(f"GROQ key detected: {bool(GROQ_API_KEY)}")
         page = st.radio(
