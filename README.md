@@ -1,4 +1,4 @@
-# Air Quality Index (AQI) Forecasting and Early Warning System for Indian Cities
+# Air Quality Index (AQI) Forecasting System
 
 ## Databricks 14-Days AI Challenge - Capstone Project
 
@@ -6,10 +6,23 @@
 **Date:** January 2026
 **Email:** keerthi.amulya.1999@gmail.com
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://air-quality-index-aqi-forecasting-system-by-keerthiamulya.streamlit.app/)
 [![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=for-the-badge&logo=databricks&logoColor=white)](https://databricks.com/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Apache Spark](https://img.shields.io/badge/Apache_Spark-E25A1C?style=for-the-badge&logo=apachespark&logoColor=white)](https://spark.apache.org/)
 [![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=for-the-badge&logo=mlflow&logoColor=white)](https://mlflow.org/)
+
+---
+
+## Live Application
+
+**Try the live demo:** [https://air-quality-index-aqi-forecasting-system-by-keerthiamulya.streamlit.app/](https://air-quality-index-aqi-forecasting-system-by-keerthiamulya.streamlit.app/)
+
+The application features:
+- **AQI Predictions** - Get 1-day, 3-day, and 7-day forecasts for any Indian city
+- **AI Chatbot** - Ask questions about air quality powered by Groq LLM
+- **Pollution Alerts** - View cities with predicted high pollution levels
+- **Health Recommendations** - Personalized advice based on AQI levels
 
 ---
 
@@ -32,7 +45,7 @@
 
 ## Executive Summary
 
-This project implements an **AI-powered AQI forecasting and early warning system** using Databricks, PySpark, and MLflow. The system predicts next-day AQI values and identifies high-pollution risk days across 275 Indian cities using 9 years of historical data (2015-2023).
+This project implements an **AI-powered AQI forecasting and early warning system** using Databricks, PySpark, and MLflow. The system predicts AQI values 1-7 days in advance and identifies high-pollution risk days across 275 Indian cities using 9 years of historical data (2015-2023).
 
 ### Key Achievements
 
@@ -44,8 +57,9 @@ This project implements an **AI-powered AQI forecasting and early warning system
 | Cities Covered | 275 |
 | Time Period | 2015-2023 |
 | ML Features Engineered | 52 |
-| Best Classification Accuracy | 89.41% (XGBoost) |
-| Best Classification F1 Score | 0.81 |
+| Models Trained | 15 (9 regression + 6 classification) |
+| Best Regression R² | 0.812 (XGBoost) |
+| Best Classification Accuracy | 91.6% (Random Forest) |
 
 ---
 
@@ -68,10 +82,11 @@ Air pollution is one of India's most pressing public health emergencies. Accordi
 
 An **intelligent AQI forecasting and early warning system** that:
 
-1. **Predicts AQI values 1-7 days in advance** using historical patterns and machine learning
+1. **Predicts AQI values 1, 3, and 7 days in advance** using historical patterns and machine learning
 2. **Identifies pollution trends** across different cities and seasons
 3. **Generates early warnings** when AQI is predicted to exceed safe thresholds (>150)
-4. **Provides actionable insights** for multiple stakeholders
+4. **Provides an AI chatbot** for personalized air quality guidance
+5. **Delivers actionable insights** through an interactive web interface
 
 ### Target Stakeholders
 
@@ -123,24 +138,48 @@ An **intelligent AQI forecasting and early warning system** that:
 
 ## Architecture
 
-### Medallion Architecture (Bronze -> Silver -> Gold)
+### Medallion Architecture (Bronze → Silver → Gold)
 
 ```
 aqi_india (Unity Catalog)
-|
-+-- bronze (Raw Data Layer)
-|   +-- aqi_bulletins (299,976 records)
-|
-+-- silver (Cleaned Data Layer)
-|   +-- aqi_cleaned (297,209 records, 20 columns)
-|       - Partitioned by year, month
-|       - ZORDER optimized by city, date
-|
-+-- gold (Analytics Layer)
-    +-- aqi_ml_features (289,034 records, 52 features)
-    +-- city_summary (275 cities aggregated)
-    +-- monthly_trends (Time-based aggregates)
-    +-- aqi_alert_predictions (Classification results)
+│
+├── bronze (Raw Data Layer)
+│   └── aqi_bulletins (299,976 records)
+│
+├── silver (Cleaned Data Layer)
+│   └── aqi_cleaned (297,209 records, 20 columns)
+│       - Partitioned by year, month
+│       - ZORDER optimized by city, date
+│
+└── gold (Analytics Layer)
+    ├── aqi_ml_features (289,034 records, 52 features)
+    ├── city_summary (275 cities aggregated)
+    └── monthly_trends (Time-based aggregates)
+```
+
+### Application Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Streamlit Frontend                    │
+│  ┌─────────┐  ┌─────────────┐  ┌─────────┐  ┌────────┐ │
+│  │  Home   │  │ Predictions │  │ Chatbot │  │ Alerts │ │
+│  └─────────┘  └─────────────┘  └─────────┘  └────────┘ │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                    FastAPI Backend                       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
+│  │ /predict │  │  /chat   │  │ /alerts  │  │ /cities │ │
+│  └──────────┘  └──────────┘  └──────────┘  └─────────┘ │
+└─────────────────────────────────────────────────────────┘
+         │                         │
+         ▼                         ▼
+┌─────────────────┐       ┌─────────────────┐
+│  MLflow Models  │       │    Groq LLM     │
+│    (XGBoost)    │       │ (llama-3.1-8b)  │
+└─────────────────┘       └─────────────────┘
 ```
 
 ---
@@ -160,11 +199,11 @@ aqi_india (Unity Catalog)
 | 2 | Parse and validate dates (2015-2023) | Date range: 2015-05-01 to 2023-12-31 |
 | 3 | Filter invalid AQI values (0-999) | 0 rows removed |
 | 4 | Handle station counts (fill NULLs with 1) | Range: 1 to 39, Avg: 1.80 |
-| 5 | Standardize city names | 277 -> 275 cities (2 merged) |
+| 5 | Standardize city names | 277 → 275 cities (2 merged) |
 | 6 | Remove duplicate date-city combinations | 2,763 duplicates removed (0.92%) |
 | 7 | Add temporal features | year, month, day_of_week, quarter, week_of_year, season, is_weekend |
 | 8 | Create AQI risk categories | Good, Satisfactory, Moderate, Poor, Very Poor, Severe |
-| 9 | Handle missing values | pollutant NULLs -> 'Unknown' |
+| 9 | Handle missing values | pollutant NULLs → 'Unknown' |
 | 10 | Create final schema | 20 columns, partitioned by year/month |
 
 **Final Silver Schema:** 297,209 records, 20 columns
@@ -177,7 +216,6 @@ aqi_india (Unity Catalog)
 |---------------|-------|----------|
 | **Identifiers** | 7 | date, city, year, month, day_of_week, quarter, season |
 | **Current Values** | 6 | aqi, station_count, aqi_category, aqi_risk_level, prominent_pollutant, is_weekend |
-| **Risk Flags** | 2 | is_high_pollution, is_severe_pollution |
 | **Lag Features** | 5 | aqi_lag_1, aqi_lag_3, aqi_lag_7, aqi_lag_14, aqi_lag_30 |
 | **Rolling Statistics** | 7 | aqi_rolling_avg_7/14/30, aqi_rolling_std_7/14, aqi_rolling_max_7, aqi_rolling_min_7 |
 | **Rate of Change** | 4 | aqi_change_1d, aqi_change_7d, aqi_pct_change_1d, aqi_pct_change_7d |
@@ -193,40 +231,30 @@ aqi_india (Unity Catalog)
 
 ## Machine Learning Models
 
-### Feature Set for Training
+### Multi-Horizon Regression Models (Predict AQI Values)
 
-```python
-features = [
-    "aqi", "aqi_lag_1", "aqi_lag_7",
-    "aqi_rolling_avg_7", "aqi_rolling_std_7",
-    "is_weekend", "is_high_pollution",
-    "city_freq", "season_idx"
-]
-```
+Three models trained for 1-day, 3-day, and 7-day forecasting:
 
-### Regression Models (Predict Next-Day AQI Value)
-
-| Model | Metrics Logged to MLflow |
-|-------|-------------------------|
-| Linear Regression | RMSE, MAE, R2, MAPE |
-| Random Forest Regressor | RMSE, MAE, R2, MAPE |
-
-*Parameters:* Random Forest (n_estimators=200, max_depth=10)
+| Model | 1-Day RMSE | 3-Day RMSE | 7-Day RMSE | Best R² |
+|-------|-----------|-----------|-----------|---------|
+| Linear Regression | 37.18 | 46.71 | 50.13 | 0.806 |
+| Random Forest | 36.82 | 44.40 | 45.85 | 0.810 |
+| **XGBoost** | **36.60** | **43.87** | **45.50** | **0.812** |
 
 ### Classification Models (High AQI Alert: AQI > 150)
 
 | Model | Accuracy | Precision | Recall | F1 Score |
 |-------|----------|-----------|--------|----------|
-| Logistic Regression | ~89% | Logged | Logged | - |
-| **Random Forest Classifier** | **89.28%** | **0.84** | **0.77** | **0.81** |
-| **XGBoost Classifier** | **89.41%** | **0.85** | **0.77** | **0.81** |
+| Logistic Regression | 89.7% | 0.642 | 0.879 | 0.742 |
+| **Random Forest** | **91.6%** | **0.711** | **0.840** | **0.770** |
+| XGBoost | 91.3% | 0.700 | 0.849 | 0.767 |
 
 ### Confusion Matrix (Logistic Regression)
 
 ```
-                    Pred_No_High_AQI  Pred_High_AQI
-Actual_No_High_AQI             38,834          2,417
-Actual_High_AQI                 3,763         12,739
+                      Pred_No_Alert  Pred_Alert
+Actual_No_Alert           38,834       2,417
+Actual_Alert               3,763      12,739
 ```
 
 - **True Negatives:** 38,834 (correctly predicted normal AQI)
@@ -236,9 +264,10 @@ Actual_High_AQI                 3,763         12,739
 
 ### MLflow Experiment Tracking
 
-- **Experiment Path:** `/Users/keerthi.amulya.1999@gmail.com/AQI_ML_Models_Final_2`
+- **Experiment Path:** `/Users/keerthi.amulya.1999@gmail.com/AQI_ML_Pipeline_Complete_2`
 - **Tracking URI:** Databricks
-- **Logged Artifacts:** Models, confusion matrices, metrics
+- **Total Models Logged:** 15 (9 regression + 6 classification)
+- **Artifacts:** Models, confusion matrices, metrics, feature importance
 
 ---
 
@@ -269,60 +298,123 @@ Actual_High_AQI                 3,763         12,739
 
 ### Model Performance Summary
 
-- **Best Regression Model:** Random Forest Regressor (logged to MLflow)
-- **Best Classification Model:** XGBoost Classifier (89.41% accuracy, 0.81 F1)
-- **Alert System:** Successfully identifies ~77% of high pollution events
+| Task | Best Model | Key Metric |
+|------|------------|------------|
+| Regression (1-day) | XGBoost | RMSE: 36.60, R²: 0.812 |
+| Regression (3-day) | XGBoost | RMSE: 43.87 |
+| Regression (7-day) | XGBoost | RMSE: 45.50 |
+| Classification | Random Forest | Accuracy: 91.6%, F1: 0.770 |
+
+---
+
+## Project Structure
+
+```
+Air-Quality-Index-AQI-Forecasting-System/
+│
+├── README.md
+│
+├── app/
+│   ├── streamlit_app.py          # Main Streamlit application
+│   ├── streamlit_deploy.py       # Standalone deployment version
+│   ├── aqi_api_fastapi.py        # FastAPI backend
+│   ├── requirements.txt          # Python dependencies
+│   └── .env                      # Environment variables
+│
+├── data/
+│   └── AllIndiaBulletins_Master.csv    # Raw dataset (299,976 records)
+│
+├── Data Cleaning/
+│   └── AQI Data_cleaning.ipynb.ipynb   # Bronze → Silver → Gold pipeline
+│
+├── Data Visualization/
+│   ├── AQI_SQL_commands.ipynb          # SQL queries for analysis
+│   ├── AQI_Visualizations_Dashboard.ipynb  # Databricks dashboard
+│   └── Screenshot/                     # Dashboard screenshots
+│
+└── ML_Implementation/
+    └── AQI_ML_Pipeline_Complete_3.ipynb    # Model training & MLflow
+```
 
 ---
 
 ## Technologies Used
 
-| Category | Technologies |
-|----------|-------------|
-| **Platform** | Databricks (Unity Catalog enabled) |
-| **Runtime** | PySpark 4.0.0, Python 3.11 |
-| **Data Storage** | Delta Lake |
-| **ML Frameworks** | scikit-learn, XGBoost |
-| **Experiment Tracking** | MLflow 2.11.4 |
-| **Visualization** | Matplotlib, Seaborn |
+### Platform & Infrastructure
 
-### Key Libraries
+| Component | Technology |
+|-----------|-----------|
+| Cloud Platform | Databricks (Unity Catalog) |
+| Distributed Processing | Apache Spark 4.0.0 |
+| Data Lake | Delta Lake |
+| Runtime | Python 3.11 |
 
-```python
-# Data Processing
-from pyspark.sql import SparkSession, functions as F
-from pyspark.sql.window import Window
+### Machine Learning
 
-# Machine Learning
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from xgboost import XGBClassifier
+| Component | Technology |
+|-----------|-----------|
+| ML Frameworks | scikit-learn, XGBoost |
+| Experiment Tracking | MLflow 2.11.4 |
+| Model Registry | MLflow |
 
-# Metrics
-from sklearn.metrics import (
-    mean_squared_error, mean_absolute_error, r2_score,
-    accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report
-)
+### Application Stack
 
-# Experiment Tracking
-import mlflow
-import mlflow.sklearn
-import mlflow.xgboost
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Streamlit 1.39.0 |
+| Backend | FastAPI |
+| LLM Integration | Groq API (llama-3.1-8b-instant) |
+| Visualization | Plotly 5.24.0 |
+
+### Key Dependencies
+
+```
+streamlit==1.39.0
+plotly==5.24.0
+python-dotenv==1.0.1
+groq==0.9.0
+httpx==0.27.2
+fastapi==0.115.0
+uvicorn==0.30.0
+scikit-learn
+xgboost
+mlflow
 ```
 
 ---
 
 ## How to Run
 
-### Prerequisites
+### Option 1: Use the Live Application
 
-1. Databricks workspace with Unity Catalog enabled
-2. Cluster with PySpark 4.0+ and Python 3.11+
-3. Required libraries: scikit-learn, xgboost, mlflow
+Visit: [https://air-quality-index-aqi-forecasting-system-by-keerthiamulya.streamlit.app/](https://air-quality-index-aqi-forecasting-system-by-keerthiamulya.streamlit.app/)
 
-### Steps
+### Option 2: Run Locally
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/KeerthiAmulyaMadireddy/Air-Quality-Index-AQI-Forecasting-System.git
+   cd Air-Quality-Index-AQI-Forecasting-System
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   cd app
+   pip install -r requirements.txt
+   ```
+
+3. **Set up environment variables:**
+   ```bash
+   # Create .env file with:
+   GROQ_API_KEY=your_groq_api_key
+   ```
+
+4. **Run the Streamlit app:**
+   ```bash
+   streamlit run streamlit_app.py
+   ```
+
+### Option 3: Run on Databricks
 
 1. **Create Unity Catalog Objects:**
    ```sql
@@ -338,23 +430,9 @@ import mlflow.xgboost
    Upload AllIndiaBulletins_Master.csv to /Volumes/aqi_india/bronze/raw_data/
    ```
 
-3. **Run Data Cleaning Notebook:**
-   ```
-   Execute: AQI Data_cleaning.ipynb.ipynb
-   Creates: bronze, silver, gold tables
-   ```
-
-4. **Train ML Models:**
-   ```
-   Execute: AQI_ML_Models_Final_2 (1).ipynb
-   Creates: MLflow experiments with logged models
-   ```
-
-5. **View Results:**
-   ```
-   MLflow UI: /Users/<your-email>/AQI_ML_Models_Final_2
-   Tables: aqi_india.gold.aqi_alert_predictions
-   ```
+3. **Run Notebooks:**
+   - `Data Cleaning/AQI Data_cleaning.ipynb.ipynb` - Creates bronze, silver, gold tables
+   - `ML_Implementation/AQI_ML_Pipeline_Complete_3.ipynb` - Trains and logs models to MLflow
 
 ---
 
@@ -362,36 +440,18 @@ import mlflow.xgboost
 
 ### Short-term Enhancements
 
-1. **Hyperparameter Tuning:** Use GridSearchCV or Databricks AutoML
-2. **Feature Selection:** Apply SHAP values for feature importance
-3. **Model Signatures:** Add input/output signatures to MLflow models
-4. **Cross-Validation:** Implement time-series cross-validation
+- Hyperparameter tuning with GridSearchCV or Databricks AutoML
+- Feature selection using SHAP values
+- Time-series cross-validation implementation
+- Model signatures in MLflow
 
 ### Long-term Goals
 
-1. **Real-time Weather Integration:** Incorporate weather forecasts
-2. **Time-Series Models:** Explore LSTM, Prophet for sequential patterns
-3. **Explainability:** Add SHAP/LIME for model interpretability
-4. **Dashboard:** Build interactive Databricks SQL dashboard
-5. **Alert System:** Automated email/SMS notifications for high AQI predictions
-6. **API Deployment:** Create REST endpoint using MLflow Model Serving
-
----
-
-## Conclusion
-
-This project successfully demonstrates:
-
-- **Medallion Architecture:** Clean data pipeline from raw to ML-ready
-- **Feature Engineering:** 52 meaningful features for AQI prediction
-- **ML Models:** Both regression and classification for comprehensive forecasting
-- **MLflow Integration:** Full experiment tracking and model versioning
-- **Actionable Insights:** High-AQI alerts with 89% accuracy
-
-The system is suitable for real-world applications including:
-- Public health alerts
-- Environmental monitoring
-- Decision support systems for policymakers
+- Real-time weather data integration
+- LSTM/Prophet models for sequential patterns
+- Model explainability with SHAP/LIME
+- Automated email/SMS alert notifications
+- Mobile application development
 
 ---
 
@@ -400,9 +460,12 @@ The system is suitable for real-world applications including:
 - **Data Source:** Central Pollution Control Board (CPCB), India
 - **Repository:** Urban Emissions Info (https://github.com/urbanemissionsinfo)
 - **Challenge Sponsors:** Databricks, Codebasics, Indian Data Club
+- **LLM Provider:** Groq
 
 ---
 
-**Contact:** Keerthi Amulya (keerthi.amulya.1999@gmail.com)
+**Author:** Keerthi Amulya
+**Contact:** keerthi.amulya.1999@gmail.com
+**Live Demo:** [Streamlit App](https://air-quality-index-aqi-forecasting-system-by-keerthiamulya.streamlit.app/)
 
 **Last Updated:** January 2026
