@@ -1,16 +1,23 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
-streamlit==1.31.0
-pandas
-numpy==1.26.3
-plotly==5.18.0
-requests==2.31.0
-google-generativeai==0.3.2
-python-dotenv==1.0.1
-packaging==23.2
-scikit-learn
+#fastapi==0.115.0
+#uvicorn[standard]==0.30.0
+#streamlit==1.31.0
+#pandas
+#numpy==1.26.3
+#plotly==5.18.0
+#requests==2.31.0
+#google-generativeai==0.3.2
+#python-dotenv==1.0.1
+#packaging==23.2
+#scikit-learn
 
 # Optional: transformer models
-transformers==4.35.2
-torch
+#transformers==4.35.2
+#torch
+#groq==0.9.0
+
+
+streamlit==1.39.0
+plotly==5.24.0
+python-dotenv==1.0.1
 groq==0.9.0
+httpx==0.27.2
